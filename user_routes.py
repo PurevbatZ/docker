@@ -6,32 +6,60 @@ from supabase import Client
 router = APIRouter()
 supabase: Client = None  # Will be initialized in main
 
-class User(BaseModel):
-    user_id: int
-    username: str
-    email: str
-
 class UserCreate(BaseModel):
     username: str
-    email: str
+    password: str
 
 class ReadBookAdd(BaseModel):
-    user_id: int
+    username: str
+    password: str
     bookID: int
 
-@router.post("/users/", response_model=User)
+class UserFavorite(BaseModel):
+    username: str
+
+@router.post("/users/", response_model=dict)
 def create_user(user: UserCreate):
     data = supabase.table("users").insert(user.dict()).execute()
     if data.data:
-        return data.data[0]
+        return {"message": "User created successfully", "user": data.data[0]}
     raise HTTPException(status_code=400, detail="User could not be created")
 
 @router.post("/users/read_books/")
 def add_read_book(entry: ReadBookAdd):
-    data = supabase.table("user_read_books").insert(entry.dict()).execute()
+    # Authenticate user
+    user_data = supabase.table("users").select("id").eq("username", entry.username).eq("password", entry.password).execute()
+    if not user_data.data:
+        raise HTTPException(status_code=403, detail="Invalid username or password")
+
+    user_id = user_data.data[0]["id"]
+    # Add book to read list
+    data = supabase.table("user_read_books").insert({"user_id": user_id, "bookID": entry.bookID}).execute()
     if data.data:
         return {"message": "Book added to user's read list"}
     raise HTTPException(status_code=400, detail="Could not add book to read list")
+
+@router.get("/users/{username}/favorites/")
+def get_user_favorites(username: str):
+    # Fetch user data
+    user_data = supabase.table("users").select("id").eq("username", username).execute()
+    if not user_data.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = user_data.data[0]["id"]
+
+    # Fetch favorite books
+    books_data = supabase.table("user_read_books").select("bookID").eq("user_id", user_id).execute()
+
+    if not books_data.data:
+        raise HTTPException(status_code=404, detail="No favorite books found")
+
+    book_ids = [entry["bookID"] for entry in books_data.data]
+    books = supabase.table("books").select("*").in_("bookID", book_ids).execute()
+
+    if books.data:
+        return books.data
+    raise HTTPException(status_code=404, detail="No books found")
 
 @router.get("/books/")
 def read_books():
