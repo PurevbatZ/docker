@@ -39,8 +39,8 @@ def add_read_book(entry: ReadBookAdd):
         return {"message": "Book added to user's read list"}
     raise HTTPException(status_code=400, detail="Could not add book to read list")
 
-@router.get("/users/{username}/favorites/")
-def get_user_favorites(username: str):
+@router.get("/users/{username}/read_list/")
+def get_user_read_list(username: str):
     # Fetch user data
     user_data = supabase.table("users").select("id").eq("username", username).execute()
     if not user_data.data:
@@ -52,7 +52,7 @@ def get_user_favorites(username: str):
     books_data = supabase.table("user_read_books").select("bookID").eq("user_id", user_id).execute()
 
     if not books_data.data:
-        raise HTTPException(status_code=404, detail="No favorite books found")
+        raise HTTPException(status_code=404, detail="No books listed to read")
 
     book_ids = [entry["bookID"] for entry in books_data.data]
     books = supabase.table("books").select("*").in_("bookID", book_ids).execute()
