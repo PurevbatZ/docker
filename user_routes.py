@@ -18,14 +18,14 @@ class ReadBookAdd(BaseModel):
 class UserFavorite(BaseModel):
     username: str
 
-@router.post("/users/", response_model=dict)
+@router.post("/Create/", response_model=dict)
 def create_user(user: UserCreate):
     data = supabase.table("users").insert(user.dict()).execute()
     if data.data:
         return {"message": "User created successfully", "user": data.data[0]}
     raise HTTPException(status_code=400, detail="User could not be created")
 
-@router.post("/users/read_books/")
+@router.post("/read_books/")
 def add_read_book(entry: ReadBookAdd):
     # Authenticate user
     user_data = supabase.table("users").select("id").eq("username", entry.username).eq("password", entry.password).execute()
@@ -39,7 +39,7 @@ def add_read_book(entry: ReadBookAdd):
         return {"message": "Book added to user's read list"}
     raise HTTPException(status_code=400, detail="Could not add book to read list")
 
-@router.get("/users/{username}/read_list/")
+@router.get("/read_list/")
 def get_user_read_list(username: str):
     # Fetch user data
     user_data = supabase.table("users").select("id").eq("username", username).execute()
@@ -68,7 +68,7 @@ def read_books():
         return data.data
     raise HTTPException(status_code=404, detail="No books found")
 
-@router.get("/books/{book_id}")
+@router.get("/By_book_id/")
 def read_book(book_id: int):
     data = supabase.table("books").select("*").eq("bookID", book_id).execute()
     if data.data:
